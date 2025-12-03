@@ -5,6 +5,8 @@ from lark import Tree
 from gersemi.ast_helpers import (
     get_value,
     is_comment,
+    is_commented_argument,
+    is_line_comment,
     is_multi_value_argument,
     is_one_of_keywords,
     is_one_value_argument,
@@ -247,6 +249,78 @@ class ArgumentAwareCommandInvocationDumper(BaseCommandInvocationDumper):
 
         return self._format_non_option(tree)
 
+    def _calculate_command_line_max_length(self, args):
+        current_line_length = 0
+        max_length = 0
+
+        for arg in args:
+            if is_line_comment(arg):
+                continue
+
+            if is_commented_argument(arg):
+                inner_arg = arg.children[0]
+                with self.not_indented():
+                    formatted_arg = self.visit(inner_arg)
+            else:
+                with self.not_indented():
+                    formatted_arg = self.visit(arg)
+
+            arg_len = len(formatted_arg.strip())
+
+            if (
+                current_line_length > 0
+                and (current_line_length + 1 + arg_len) > self.width
+            ):
+                current_line_length = 0
+
+            prefix_len = current_line_length + (1 if current_line_length > 0 else 0)
+            total_len = prefix_len + arg_len
+
+            if is_commented_argument(arg):
+                max_length = max(max_length, total_len)
+                current_line_length = 0
+            else:
+                current_line_length = total_len
+
+        return max_length
+
+    def _calculate_group_max_length(self, group):
+        if not hasattr(group, "children"):
+            return 0
+
+        is_command_line = False
+        if is_multi_value_argument(group):
+            keyword = get_value(group.children[0], None)
+            formatter_kind = kind_to_formatter(
+                self.keyword_formatters.get(keyword, None)
+            )
+            if formatter_kind == "_format_command_line":
+                is_command_line = True
+
+        if is_command_line:
+            return self._calculate_command_line_max_length(group.children[1:])
+
+        return self._calculate_max_argument_length(group.children)
+
     def arguments(self, tree):
         groups = self._split_arguments(tree.children)
-        return "\n".join(map(self.visit, filter(None, groups)))
+
+        if not self.align_comments:
+            return "\n".join(map(self.visit, filter(None, groups)))
+
+        # Calculate max argument length for alignment across all groups
+        max_arg_length = 0
+        for group in filter(None, groups):
+            group_max = self._calculate_group_max_length(group)
+            max_arg_length = max(max_arg_length, group_max)
+
+        # Store the max length in the context for commented_argument to use
+        old_max_arg_length = self._current_max_arg_length
+        self._current_max_arg_length = max_arg_length
+
+        result = "\n".join(map(self.visit, filter(None, groups)))
+
+        # Restore the old value
+        self._current_max_arg_length = old_max_arg_length
+
+        return result

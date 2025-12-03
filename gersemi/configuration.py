@@ -210,6 +210,18 @@ class OutcomeConfiguration:  # pylint: disable=too-many-instance-attributes
         ),
     )
 
+    align_comments: bool = field(
+        default=False,
+        metadata=dict(
+            title="Align comments",
+            description=doc(
+                """
+    When enabled, comments on multiline arguments will be aligned to the same column.
+                """
+            ),
+        ),
+    )
+
 
 @dataclass
 class ControlConfiguration:

@@ -1,4 +1,5 @@
-from gersemi.ast_helpers import is_line_comment_in_any_of
+from lark import Tree
+from gersemi.ast_helpers import is_line_comment_in_any_of, is_commented_argument
 from gersemi.base_dumper import BaseDumper
 from gersemi.configuration import ListExpansion, Spaces
 from gersemi.types import Nodes
@@ -6,6 +7,19 @@ from gersemi.types import Nodes
 
 class BaseCommandInvocationDumper(BaseDumper):
     _inhibit_favour_expansion: bool = False
+
+    def _calculate_max_argument_length(self, children):
+        """Calculate the maximum length of arguments that have comments."""
+        max_length = 0
+        for child in children:
+            if isinstance(child, Tree) and is_commented_argument(child):
+                argument = child.children[0]
+                # Format without indentation to get actual argument length
+                with self.not_indented():
+                    formatted_arg = self.visit(argument)
+                arg_length = len(formatted_arg.strip())
+                max_length = max(max_length, arg_length)
+        return max_length
 
     def format_command_with_short_name(self, begin, arguments, end):
         with self.indented():
@@ -58,14 +72,40 @@ class BaseCommandInvocationDumper(BaseDumper):
             return self._format_command_with_long_name(begin, arguments, end)
 
     def arguments(self, tree):
-        return "\n".join(self.visit_children(tree))
+        if not self.align_comments:
+            return "\n".join(self.visit_children(tree))
+
+        # Calculate max argument length for alignment
+        max_arg_length = self._calculate_max_argument_length(tree.children)
+
+        # Store the max length in the context for commented_argument to use
+        old_max_arg_length = self._current_max_arg_length
+        self._current_max_arg_length = max_arg_length
+
+        result = "\n".join(self.visit_children(tree))
+
+        # Restore the old value
+        self._current_max_arg_length = old_max_arg_length
+
+        return result
 
     def commented_argument(self, tree):
         argument, comment, *_ = tree.children
         formatted_argument = self.visit(argument)
         with self.not_indented():
             formatted_comment = self.visit(comment)
-        return f"{formatted_argument} {formatted_comment}"
+
+        if not self.align_comments or self._current_max_arg_length is None:
+            return f"{formatted_argument} {formatted_comment}"
+
+        # Calculate padding needed for alignment
+        arg_without_indent = formatted_argument.lstrip()
+        arg_length = len(arg_without_indent) + self._current_prefix_length
+        max_length = self._current_max_arg_length
+
+        # Add padding to align comments (at least one space before comment)
+        padding = max(1, max_length - arg_length + 1)
+        return f"{formatted_argument}{' ' * padding}{formatted_comment}"
 
     def complex_argument(self, tree):
         arguments, *_ = tree.children

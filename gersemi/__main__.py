@@ -197,6 +197,18 @@ def create_argparser():
         type=str,
         help=outcome_conf_doc["extensions"],
     )
+    outcome_configuration_group.add_argument(
+        "--align-comments",
+        "--no-align-comments",
+        dest="align_comments",
+        action=toggle_with_no_prefix,
+        nargs=0,
+        default=None,
+        help=f"""
+    {outcome_conf_doc["align_comments"]}
+    [default: disabled, same as --no-align-comments]
+        """,
+    )
 
     control_conf_doc: dict[str, str] = {
         item.name: item.metadata["description"] for item in fields(ControlConfiguration)

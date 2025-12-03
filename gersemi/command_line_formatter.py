@@ -19,8 +19,14 @@ class CommandLineFormatter(BaseDumper):
                 lines += [self.visit(arg)]
                 continue
 
+            content_len = len(lines[-1].lstrip())
+            self._current_prefix_length = content_len + 1 if content_len > 0 else 0
+
             with self.not_indented():
                 formatted_arg = self.visit(arg)
+
+            self._current_prefix_length = 0
+
             updated_line = f"{lines[-1]} {formatted_arg}"
             if force_next_line or self._should_start_new_line(updated_line, lines[-1]):
                 force_next_line = is_commented_argument(arg)

@@ -83,6 +83,12 @@
         "description": "When enabled file which has unknown custom commands will have warnings issued about that and result won't be cached. See: \"Let's make a deal\" section in README.",
       "title": "Warn about unknown commands",
       "type": "boolean"
+    },
+    "align_comments": {
+      "default": false,
+      "description": "When enabled, comments on multiline arguments will be aligned to the same column.",
+      "title": "Align comments",
+      "type": "boolean"
     }
   },
   "title": "OutcomeConfiguration",
