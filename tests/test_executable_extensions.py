@@ -192,6 +192,7 @@ def test_print_config_verbose_with_extensions(app, testfiles, outcome):
 ##   Missing extension han_sooyoung_company
 ##
 
+align_comments: false
 definitions: []
 disable_formatting: false
 extensions:

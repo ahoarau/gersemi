@@ -228,8 +228,10 @@ def verbose_config(
     list_expansion="favour-inlining",
     unsafe="false",
     warn_about_unknown_commands="true",
+    align_comments="false",
 ):
-    return f"""definitions:{definitions}
+    return f"""align_comments: {align_comments}
+definitions:{definitions}
 disable_formatting: {disable_formatting}
 extensions:{extensions}
 indent: {indent}
